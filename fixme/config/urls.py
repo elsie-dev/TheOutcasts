@@ -1,6 +1,7 @@
 """Main URLs module."""
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
 from django.urls import include, path
 from django.views.decorators.cache import cache_page
 from drf_spectacular.views import (
@@ -17,12 +18,12 @@ DOCS_PAGES_CACHE_TIMEOUT = 60 * 60
 
 apipatterns = [
     path("auth/", include("fixme.authentication.urls")),
-    # path("common/", include("fixme.common.urls")),
-    # path("tasks/", include("fixme.tasks.urls")),
-    # path("replay/", include("fixme.replay.urls")),
+    path("tasks/", include("fixme.tasks.urls")),
+    path("replay/", include("fixme.replay.urls")),
 ]
 
 urlpatterns = [
+    path("admin/", admin.site.urls),
     path("auth", include("fixme.authentication.urls")),
     path("api/", include(apipatterns)),  # type: ignore
     path(

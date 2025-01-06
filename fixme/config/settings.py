@@ -239,7 +239,6 @@ LOGGING = {
 }
 
 
-
 """ Django Rest Framework """
 REST_FRAMEWORK = {
     "DEFAULT_MODEL_SERIALIZER_CLASS": ("rest_framework.serializers.ModelSerializer",),
@@ -264,7 +263,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.AllowAny",
     ],
     "DEFAULT_METADATA_CLASS": "rest_framework.metadata.SimpleMetadata",
     "DEFAULT_THROTTLE_CLASSES": [
@@ -290,7 +289,6 @@ REST_FRAMEWORK = {
 }
 
 FILTERS_STRICTNESS = "STRICTNESS.RAISE_VALIDATION_ERROR"
-
 
 
 
@@ -339,11 +337,6 @@ LOCALE_PATHS = [
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 DECIMAL_PLACES = 4  # Decimal places to use for all decimal values
-
-
-
-
-
 
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
