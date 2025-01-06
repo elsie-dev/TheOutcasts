@@ -17,9 +17,9 @@ DOCS_PAGES_CACHE_TIMEOUT = 60 * 60
 
 apipatterns = [
     path("auth/", include("fixme.authentication.urls")),
-    path("common/", include("fixme.common.urls")),
-    path("tasks/", include("fixme.tasks.urls")),
-    path("replay/", include("fixme.replay.urls")),
+    # path("common/", include("fixme.common.urls")),
+    # path("tasks/", include("fixme.tasks.urls")),
+    # path("replay/", include("fixme.replay.urls")),
 ]
 
 urlpatterns = [

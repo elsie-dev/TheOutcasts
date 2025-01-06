@@ -54,6 +54,7 @@ LOCAL_APPS = [
     "fixme.authentication",
     "fixme.replay",
     "fixme.tasks",
+    "fixme.settings"
 ]
 INSTALLED_APPS += LOCAL_APPS
 if ENVIRONMENT == "dev":
@@ -91,8 +92,6 @@ TEMPLATES = [
         },
     },
 ]
-
-WSGI_APPLICATION = "fixme.wsgi.application"
 
 
 # Database
