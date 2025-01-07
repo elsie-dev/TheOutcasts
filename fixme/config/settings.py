@@ -82,6 +82,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
      "common.middleware.LoginRequiredMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
+     "common.middleware.LoginRequiredMiddleware",
 ]
 
 
