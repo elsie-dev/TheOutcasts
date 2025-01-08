@@ -71,3 +71,8 @@ if settings.ENVIRONMENT == "dev":
             name="schema-redoc",
         ),
     ]
+
+if settings.DEBUG:
+    urlpatterns += [
+        path("__debug__/", include("debug_toolbar.urls")),
+    ]

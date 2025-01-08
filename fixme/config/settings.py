@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "debug_toolbar",
 ]
 
 LOCAL_APPS = [
@@ -73,6 +74,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = "fixme.config.urls"
@@ -345,3 +347,28 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_SSL_REDIRECT = True
     X_FRAME_OPTIONS = "DENY"
+
+
+# Debug Toolbar configuration
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
+
+# Show the toolbar only in debug mode
+if DEBUG:
+    import os
+    INTERNAL_IPS = [  # Ensure internal IPs work in Docker or dynamic environments
+        os.getenv("INTERNAL_IP", "127.0.0.1"),
+    ]
+
+
+DEBUG_TOOLBAR_PANELS = [
+    "debug_toolbar.panels.timer.TimerPanel",
+    "debug_toolbar.panels.sql.SQLPanel",
+    "debug_toolbar.panels.templates.TemplatesPanel",
+    "debug_toolbar.panels.cache.CachePanel",
+    "debug_toolbar.panels.headers.HeadersPanel",
+    "debug_toolbar.panels.request.RequestPanel",
+    "debug_toolbar.panels.signals.SignalsPanel",
+    "debug_toolbar.panels.staticfiles.StaticFilesPanel",
+]
