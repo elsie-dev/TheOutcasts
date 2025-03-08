@@ -2,8 +2,6 @@
 
 import json
 
-import requests
-from django.contrib.postgres.search import SearchVector
 
 
 
