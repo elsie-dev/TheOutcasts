@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
+    'django_prometheus',
+
 ]
 
 LOCAL_APPS = [
@@ -74,15 +76,17 @@ if ENVIRONMENT == "dev":
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-     "common.middleware.LoginRequiredMiddleware",
+    "common.middleware.LoginRequiredMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
-     "common.middleware.LoginRequiredMiddleware",
+    "common.middleware.LoginRequiredMiddleware",
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 
