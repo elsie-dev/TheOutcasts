@@ -27,6 +27,27 @@ A **Proof of Concept (POC)** for a **Distributed Incident Simulation and Resolut
 - Redis (optional for caching)
 
 
+## Local setup
+
+Clone the repository
+```python
+git clone https://github.com/MikeMwita/fixme-backend
+cd fixme-backend
+```
+Create & activate virtual env
+```python
+python3.12 -m venv .venv
+source .venv/bin/activate
+
+```
+
+Install dependancies
+
+```python
+pip install --upgrade pip
+pip install -r requirements.txt
+
+```
 ### Future Enhancements
 - Add support for advanced metrics monitoring using Prometheus and Grafana.
 - Implement Go-based microservices for real-time validation.

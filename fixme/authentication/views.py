@@ -12,7 +12,8 @@ from django.views.decorators.http import require_POST
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from common.utils import validate_post_data
+
+from fixme.common.utils import validate_post_data
 from .models import User
 
 
@@ -56,3 +57,22 @@ def login(request):
         return Response({"token": token, "user": user.full_name()}, status=200)
     else:
         return Response({"error": "Invalid credentials."}, status=401)
+
+
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import User
+from .serializers import UserSerializer
+
+
+class UserViewSet(ModelViewSet):
+    """
+    CRUD operations for users.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def get_permissions(self):
+        if self.action in ["create"]:
+            return [AllowAny()]
+        return [IsAuthenticated()]

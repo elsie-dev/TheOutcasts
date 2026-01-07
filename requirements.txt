@@ -1,7 +1,22 @@
 asgiref==3.8.1
-Django==5.1.4
+Django==5.2
 sqlparse==0.5.3
 wheel==0.45.1
 newrelic==10.12.0
-django-promethus
-prometheus_client
+celery
+django-celery-results
+django-celery-beat
+redis
+kombu
+djangorestframework
+django-filter
+drf-orjson-renderer
+orjson
+# PyJWT
+
+
+drf-spectacular
+drf-yasg
+python-dotenv
+requests
+django-debug-toolbar

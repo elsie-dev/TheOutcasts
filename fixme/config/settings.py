@@ -53,9 +53,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "debug_toolbar",
-    "rest_framework_simplejwt",
-    "rest_framework_simplejwt.token_blacklist",
-    'django_prometheus',
 
 ]
 
@@ -63,7 +60,8 @@ LOCAL_APPS = [
     "fixme.authentication",
     "fixme.replay",
     "fixme.tasks",
-    "fixme.settings"
+    "fixme.settings",
+    "fixme.common",
 ]
 INSTALLED_APPS += LOCAL_APPS
 if ENVIRONMENT == "dev":
@@ -76,17 +74,13 @@ if ENVIRONMENT == "dev":
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "common.middleware.LoginRequiredMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
-    "common.middleware.LoginRequiredMiddleware",
-    'django_prometheus.middleware.PrometheusAfterMiddleware',
 ]
 
 
@@ -184,11 +178,6 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
 
-MIDDLEWARE.append("django_prometheus.middleware.PrometheusBeforeMiddleware")
-MIDDLEWARE.append("django_prometheus.middleware.PrometheusAfterMiddleware")
-
-INSTALLED_APPS.append("django_prometheus")
-
 """ Logging """
 LOGGING = {
     "version": 1,
@@ -269,11 +258,6 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
         "rest_framework.parsers.FileUploadParser",
     ),
-    "DEFAULT_RENDERER_CLASSES": [
-        "drf_orjson_renderer.renderers.ORJSONRenderer",
-        "sil_renderers.PDFRenderer",
-        "sil_renderers.ExcelRenderer",
-    ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
@@ -314,7 +298,7 @@ BROKER_URL = os.getenv(
 )
 RESULT_BACKEND = os.getenv("RESULT_BACKEND", BROKER_URL)
 CELERY_TIMEZONE = TIME_ZONE
-CELERY_DEFAULT_QUEUE = "advantage_tasks"
+CELERY_DEFAULT_QUEUE = "tasks"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -364,19 +348,20 @@ if not DEBUG:
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": None,
+
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }
 
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
-    "AUTH_HEADER_TYPES": ("Bearer",),
-}
+
 
 # Debug Toolbar configuration
 INTERNAL_IPS = [
