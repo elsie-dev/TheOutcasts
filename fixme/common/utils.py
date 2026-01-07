@@ -2,10 +2,6 @@
 
 import json
 
-
-
-
-
 def validate_post_data(request, required_fields):
     """Validate POST fields against a list of required fields."""
     try:
