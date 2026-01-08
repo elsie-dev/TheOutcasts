@@ -48,6 +48,13 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 ```
+Incase of errors with ssl while installing requirements do:
+
+'''pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org
+
+'''
+
+
 ### Future Enhancements
 - Add support for advanced metrics monitoring using Prometheus and Grafana.
 - Implement Go-based microservices for real-time validation.
