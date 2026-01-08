@@ -54,6 +54,9 @@ Incase of errors with ssl while installing requirements do:
 
 '''
 
+python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver.
 
 ### Future Enhancements
 - Add support for advanced metrics monitoring using Prometheus and Grafana.
