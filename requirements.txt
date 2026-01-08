@@ -14,7 +14,6 @@ drf-orjson-renderer
 orjson
 # PyJWT
 
-
 drf-spectacular
 drf-yasg
 python-dotenv
