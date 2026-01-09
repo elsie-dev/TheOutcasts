@@ -19,3 +19,4 @@ drf-yasg
 python-dotenv
 requests
 django-debug-toolbar
+djangorestframework-simplejwt==5.3.1
