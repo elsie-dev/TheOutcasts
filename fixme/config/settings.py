@@ -386,3 +386,4 @@ DEBUG_TOOLBAR_PANELS = [
     "debug_toolbar.panels.signals.SignalsPanel",
     "debug_toolbar.panels.staticfiles.StaticFilesPanel",
 ]
+APPEND_SLASH=False
