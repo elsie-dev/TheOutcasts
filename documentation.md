@@ -26,3 +26,15 @@ Key functions will include:
 2. Docker for containerization &  Kubernetes container orchestration
 3. Prometheus for monitoring the deployed micro-service.
 4. Python for custom failure injection scripts.
+
+### Stress Testing:
+1. 
+```bash
+# Install stress-ng (Ubuntu/Debian)
+sudo apt-get install -y stress-ng
+
+# Simulate CPU load
+stress-ng --cpu 2 --timeout 120s
+```
+
+---
