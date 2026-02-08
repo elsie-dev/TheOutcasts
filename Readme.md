@@ -63,3 +63,13 @@ python manage.py runserver.
 - Implement Go-based microservices for real-time validation.
 - Integrate distributed caching for performance optimization.
 
+
+
+
+## Demonstrate Chaos Engineering
+- Able to send requests to perform logging and an action.
+- Deploy through an OSS e.g Minikune.
+- Set up monitoring (Grafana - visualization).
+- Python scripts to inject failure (chaos engineering), types of failure are different, 2/3 scenarios - able to see failure on grafana board.
+- E.g Pods up & running, inject failure to network failure - see on Grafana (memory,cpu requests), memory spikes on Grafana board.
+- 
