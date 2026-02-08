@@ -72,4 +72,4 @@ python manage.py runserver.
 - Set up monitoring (Grafana - visualization).
 - Python scripts to inject failure (chaos engineering), types of failure are different, 2/3 scenarios - able to see failure on grafana board.
 - E.g Pods up & running, inject failure to network failure - see on Grafana (memory,cpu requests), memory spikes on Grafana board.
-- 
+  
