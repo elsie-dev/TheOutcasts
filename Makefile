@@ -16,4 +16,4 @@ Mimesis:
 		mimesis check .  # enables one to generate all kind of data
 
 PySnooper:
-		pysnooper test.py  #debugging tool (never use print statement again)
+		pysnooper test.py  #debugging tool

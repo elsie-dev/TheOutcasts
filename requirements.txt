@@ -20,3 +20,7 @@ python-dotenv
 requests
 django-debug-toolbar
 djangorestframework-simplejwt==5.3.1
+
+# Chaos engineering
+psutil
+django-cors-headers

@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "debug_toolbar",
-
+    "corsheaders",
 ]
 
 LOCAL_APPS = [
@@ -62,6 +62,7 @@ LOCAL_APPS = [
     "fixme.tasks",
     "fixme.settings",
     "fixme.common",
+    "fixme.chaos",
 ]
 INSTALLED_APPS += LOCAL_APPS
 if ENVIRONMENT == "dev":
@@ -73,6 +74,7 @@ if ENVIRONMENT == "dev":
     SILKY_EXPLAIN_FLAGS = {"costs": True, "verbose": True}
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # must be first
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -81,7 +83,15 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "fixme.chaos.middleware.ChaosMiddleware",  # must be last
 ]
+
+# CORS — allow the Vite dev server (port 5173) to call Django (port 8000)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+CORS_ALLOW_ALL_ORIGINS = True  # relaxed for demo; tighten in production
 
 
 ROOT_URLCONF = "fixme.config.urls"
