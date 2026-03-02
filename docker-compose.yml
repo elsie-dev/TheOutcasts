@@ -1,0 +1,122 @@
+services:
+
+  # ── Application ──────────────────────────────────────────────────────────────
+  web:
+    build: .
+    container_name: fixme-web
+    command: >
+      gunicorn fixme.config.wsgi:application
+        --bind 0.0.0.0:8000
+        --workers 4
+        --timeout 120
+        --access-logfile -
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: fixme.config.settings
+      ENVIRONMENT: dev
+      USE_POSTGRES: "true"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app                   # live-reload in dev; remove for prod image
+    restart: unless-stopped
+
+  celery:
+    build: .
+    container_name: fixme-celery
+    command: celery -A fixme.config.celery worker --loglevel=info --concurrency=4
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: fixme.config.settings
+      ENVIRONMENT: dev
+      USE_POSTGRES: "true"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+
+  flower:
+    build: .
+    container_name: fixme-flower
+    command: celery -A fixme.config.celery flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # ── Data stores ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: fixme-postgres
+    environment:
+      POSTGRES_DB: fixme_db
+      POSTGRES_USER: fixme_user
+      POSTGRES_PASSWORD: fixme_pass       # override via .env in production
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fixme_user -d fixme_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: fixme-redis
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Metrics exporters (scraped by monitoring/docker-compose.yml) ─────────────
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: fixme-redis-exporter
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: fixme-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://fixme_user:fixme_pass@postgres:5432/fixme_db?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

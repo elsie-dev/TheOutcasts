@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+
+  # ── Prometheus itself ────────────────────────────────────────────────────────
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ── Django app (django-prometheus exposes /metrics) ──────────────────────────
+  # Service name 'web' matches the docker-compose service in ../docker-compose.yml
+  - job_name: 'fixme-django'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['web:8000']
+    relabel_configs:
+      - target_label: app
+        replacement: fixme-web
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  # oliver006/redis_exporter sidecar — defined in ../docker-compose.yml
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - target_label: app
+        replacement: redis
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  # prometheuscommunity/postgres-exporter sidecar — defined in ../docker-compose.yml
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - target_label: app
+        replacement: postgres
+
+  # ── Celery (via Flower) ──────────────────────────────────────────────────────
+  - job_name: 'celery-flower'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['flower:5555']
+    relabel_configs:
+      - target_label: app
+        replacement: fixme-celery
