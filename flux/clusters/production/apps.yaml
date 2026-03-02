@@ -1,0 +1,34 @@
+# Flux Kustomization — tells Flux which path to reconcile from the GitRepository.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: fixme-apps
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./k8s/base
+  prune: true          # Deletes resources removed from git
+  wait: true           # Waits for all resources to become Ready
+  sourceRef:
+    kind: GitRepository
+    name: fixme-repo
+  targetNamespace: fixme
+  # Health checks — Flux will mark the Kustomization healthy only when
+  # these resources are ready.
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: fixme-web
+      namespace: fixme
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: fixme-celery
+      namespace: fixme
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: postgres
+      namespace: fixme
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: redis
+      namespace: fixme

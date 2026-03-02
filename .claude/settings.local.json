@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(\"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -m pip install python-docx)",
+      "Bash(\"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\":*)",
+      "Bash(\"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -c \"\nimport sys, io\nsys.stdout = io.TextIOWrapper\\(sys.stdout.buffer, encoding=''utf-8''\\)\nfrom docx import Document\ndoc = Document\\(r''C:\\\\Users\\\\Administrator\\\\TheOutcasts\\\\Proposal_Template.docx''\\)\n\n# Print remaining table rows\nfor ti, table in enumerate\\(doc.tables\\):\n    print\\(f''Table {ti}: {len\\(table.rows\\)} rows x {len\\(table.columns\\)} cols''\\)\n    for ri, row in enumerate\\(table.rows\\):\n        cells = [cell.text.strip\\(\\) for cell in row.cells]\n        print\\(f''  Row {ri}: {cells}''\\)\n\")",
+      "WebSearch",
+      "Bash(\"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -c \"\nimport sys, io\nsys.stdout = io.TextIOWrapper\\(sys.stdout.buffer, encoding=''utf-8''\\)\nfrom docx import Document\ndoc = Document\\(r''C:\\\\Users\\\\Administrator\\\\TheOutcasts\\\\Filled_Proposal.docx''\\)\n\nfor i, para in enumerate\\(doc.paragraphs\\):\n    text = para.text.strip\\(\\)\n    if text:\n        style = para.style.name if para.style else ''None''\n        print\\(f''[{i}] \\({style}\\) {text[:120]}''\\)\n\")",
+      "Bash(\"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe\" -c:*)"
+    ]
+  }
+}
