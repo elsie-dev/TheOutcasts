@@ -13,6 +13,7 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
+from fixme.chaos.views import metrics as metrics_view
 
 DOCS_PAGES_CACHE_TIMEOUT = 60 * 60
 
@@ -20,6 +21,8 @@ apipatterns = [
     path("auth/", include("fixme.authentication.urls")),
     path("tasks/", include("fixme.tasks.urls")),
     path("replay/", include("fixme.replay.urls")),
+    path("chaos/", include("fixme.chaos.urls")),
+    path("metrics/", metrics_view, name="metrics"),
 ]
 
 urlpatterns = [
