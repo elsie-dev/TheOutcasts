@@ -1,14 +1,16 @@
 import os
 
 import psutil
+from django.http import HttpResponse
 from django.utils import timezone
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from fixme.tasks.models import Task
-from . import state
+from . import prom, state
 from .models import ChaosConfig, ChaosEvent
 from .serializers import ChaosConfigSerializer, ChaosEventSerializer
 
@@ -126,6 +128,32 @@ def stop_chaos(request):
         stopped.append(cfg.scenario)
 
     return Response({"stopped": stopped})
+
+
+def prom_metrics(request):
+    """
+    Prometheus text-format scrape endpoint — consumed by Prometheus, not the frontend.
+    Plain Django view (no DRF) so we can set the exact Content-Type required.
+    """
+    process = psutil.Process(os.getpid())
+    stats = state.get_request_stats()
+    active_scenarios = set(
+        ChaosConfig.objects.filter(is_active=True).values_list("scenario", flat=True)
+    )
+
+    prom.memory_bytes.set(process.memory_info().rss)
+    prom.cpu_percent.set(psutil.cpu_percent(interval=None))
+    prom.latency_ms_avg.set(stats["avg_latency_ms"])
+    prom.request_count.set(stats["total_requests"])
+    prom.error_count.set(stats["error_count"])
+    prom.error_rate_pct.set(stats["error_rate_pct"])
+
+    for scenario in _VALID_SCENARIOS:
+        prom.chaos_active.labels(scenario=scenario).set(
+            1.0 if scenario in active_scenarios else 0.0
+        )
+
+    return HttpResponse(generate_latest(), content_type=CONTENT_TYPE_LATEST)
 
 
 @api_view(["GET"])

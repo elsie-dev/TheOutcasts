@@ -1,20 +1,18 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: 'django'
-    static_configs:
-      - targets: ['localhost:8000']
-
-  - job_name: 'celery'
-    static_configs:
-      - targets: ['localhost:9540']
-
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-
+  scrape_interval:     5s   # pull metrics every 5 s (chaos spikes are short-lived)
+  evaluation_interval: 15s  # evaluate alert rules every 15 s
 
 rule_files:
-  - ./rules.yml
+  - /etc/prometheus/rules.yml
+
+scrape_configs:
+  - job_name: django
+    metrics_path: /prom-metrics/
+    static_configs:
+      - targets: ['django:8000']
+        labels:
+          env: demo
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

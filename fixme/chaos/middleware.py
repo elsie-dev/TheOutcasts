@@ -16,6 +16,7 @@ from . import state
 _EXCLUDED = (
     "/api/chaos",
     "/api/metrics",
+    "/prom-metrics",
     "/admin",
     "/__debug__",
     "/static",
