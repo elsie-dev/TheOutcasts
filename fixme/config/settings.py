@@ -35,7 +35,7 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 AUTH_USER_MODEL = "authentication.User"
 
@@ -76,6 +76,7 @@ if ENVIRONMENT == "dev":
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # must be first
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -281,7 +282,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "user": "100/second",
-        "anon": "4/minute",
+        "anon": "300/minute",
         "lenient_anon": "20/minute",
     },
     "DEFAULT_PAGINATION_CLASS": (

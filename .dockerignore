@@ -1,0 +1,37 @@
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.mypy_cache
+.pytest_cache
+.tox
+*.egg-info
+dist/
+build/
+profiling/
+
+# Local DB & logs
+*.sqlite3
+*.log
+debug.log
+
+# Secrets
+.env
+
+# Frontend (has its own build stage)
+frontend/
+
+# Tests & docs
+tests/
+*.md
+Readme.md
+
+# IDE
+.vscode
+.idea

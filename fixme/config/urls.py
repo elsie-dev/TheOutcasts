@@ -13,7 +13,7 @@ from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
 
-from fixme.chaos.views import metrics as metrics_view
+from fixme.chaos.views import metrics as metrics_view, prom_metrics
 
 DOCS_PAGES_CACHE_TIMEOUT = 60 * 60
 
@@ -27,6 +27,7 @@ apipatterns = [
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("prom-metrics/", prom_metrics, name="prom-metrics"),
     path("auth", include("fixme.authentication.urls")),
     path("api/", include(apipatterns)),  # type: ignore
     path(

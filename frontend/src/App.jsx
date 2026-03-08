@@ -106,7 +106,7 @@ export default function App() {
       {/* ── Header ── */}
       <header style={styles.header}>
         <div style={styles.brand}>
-          <span style={styles.logo}>⚡</span>
+          <span style={styles.logo}></span>
           <span style={styles.title}>FixMe · Chaos Lab</span>
         </div>
         <div style={styles.headerRight}>

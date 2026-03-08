@@ -1,0 +1,111 @@
+version: "3.9"
+
+networks:
+  fixme_net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+services:
+
+  # Python backend
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: fixme.config.settings
+      ALLOWED_HOSTS: "*"
+    volumes:
+      - ./db.sqlite3:/app/db.sqlite3  
+    ports:
+      - "8000:8000"
+    networks:
+      - fixme_net
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/prom-metrics/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  # React frontend (nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - fixme_net
+    depends_on:
+      django:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no  
+    volumes:
+      - redis_data:/data
+    networks:
+      - fixme_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle      
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - fixme_net
+    depends_on:
+      django:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:10.4.2
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: chaos123
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/chaos_lab.json
+      GF_AUTH_ANONYMOUS_ENABLED: "true"         
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - fixme_net
+    depends_on:
+      - prometheus
+    restart: unless-stopped

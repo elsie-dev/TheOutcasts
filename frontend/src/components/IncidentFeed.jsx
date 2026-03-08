@@ -1,7 +1,7 @@
 const EVENT_META = {
-  INJECTED:         { icon: '⚡', color: '#f85149', label: 'Injected' },
-  STOPPED:          { icon: '✅', color: '#3fb950', label: 'Stopped' },
-  INCIDENT_CREATED: { icon: '🚨', color: '#d29922', label: 'Incident' },
+  INJECTED:         {color: '#f85149', label: 'Injected' },
+  STOPPED:          { color: '#3fb950', label: 'Stopped' },
+  INCIDENT_CREATED: {color: '#d29922', label: 'Incident' },
 }
 
 const STATUS_COLOR = {

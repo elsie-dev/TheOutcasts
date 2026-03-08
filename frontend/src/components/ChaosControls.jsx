@@ -4,21 +4,18 @@ const SCENARIOS = [
     label: 'Memory Leak',
     description: 'Allocates ~1 MB every 500 ms — watch RAM spike on the chart.',
     color: '#bc8cff',
-    icon: '🧠',
   },
   {
     id: 'NETWORK_LATENCY',
     label: 'Network Latency',
     description: 'Injects a 1–3 s random delay on every API request.',
     color: '#d29922',
-    icon: '🐢',
   },
   {
     id: 'ERROR_RAIN',
     label: 'Error Rain',
     description: 'Returns HTTP 500 on 40 % of incoming requests.',
     color: '#f85149',
-    icon: '💥',
   },
 ]
 
