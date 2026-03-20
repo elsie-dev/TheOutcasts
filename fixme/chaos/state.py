@@ -8,6 +8,8 @@ import random
 import threading
 import time
 
+from . import prom as _prom
+
 # ── Memory Leak ──────────────────────────────────────────────────────────────
 _leak_data: list = []
 _leak_thread: threading.Thread | None = None
@@ -47,7 +49,7 @@ def start_network_latency() -> None:
 
     def _loop() -> None:
         while not _latency_stop.is_set():
-            delay = random.uniform(1000.0, 3000.0)  # 1–3 s in ms
+            delay = random.uniform(1000.0, 3000.0)  
             time.sleep(delay / 1000.0)
             if not _latency_stop.is_set():
                 record_request(delay, is_error=False)
@@ -60,6 +62,9 @@ def start_network_latency() -> None:
 
 def stop_network_latency() -> None:
     _latency_stop.set()
+    with _lock:
+        _latencies.clear()
+    _prom.latency_ms_avg.set(0)
 
 
 # ── Error Rain simulator ──────────────────────────────────────────────────────
@@ -86,7 +91,14 @@ def start_error_rain() -> None:
 
 
 def stop_error_rain() -> None:
+    global _error_count, _request_count
     _error_rain_stop.set()
+    with _lock:
+        _error_count = 0
+        _request_count = 0
+    _prom.error_rate_pct.set(0)
+    _prom.error_count.set(0)
+    _prom.request_count.set(0)
 
 
 # ── Request metrics ───────────────────────────────────────────────────────────
@@ -123,3 +135,7 @@ def reset_stats() -> None:
         _error_count = 0
         _request_count = 0
         _latencies.clear()
+    _prom.latency_ms_avg.set(0)
+    _prom.error_rate_pct.set(0)
+    _prom.error_count.set(0)
+    _prom.request_count.set(0)
