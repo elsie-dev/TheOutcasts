@@ -1,88 +1,78 @@
-import {
-  AreaChart,
-  Area,
-  ResponsiveContainer,
-  Tooltip,
-  YAxis,
-} from 'recharts'
+import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
 
 const CHARTS = [
-  {
-    key: 'memory_mb',
-    label: 'Memory',
-    unit: 'MB',
-    color: '#bc8cff',
-    domain: [0, 'auto'],
-  },
-  {
-    key: 'cpu_percent',
-    label: 'CPU',
-    unit: '%',
-    color: '#3fb950',
-    domain: [0, 100],
-  },
-  {
-    key: 'avg_latency_ms',
-    label: 'Latency',
-    unit: 'ms',
-    color: '#d29922',
-    domain: [0, 'auto'],
-  },
-  {
-    key: 'error_rate_pct',
-    label: 'Error Rate',
-    unit: '%',
-    color: '#f85149',
-    domain: [0, 100],
-  },
+  { key: 'memory_mb',      label: 'Memory Usage',  unit: 'MB',  color: '#a78bfa', domain: [0, 'auto'] },
+  { key: 'cpu_percent',    label: 'CPU',            unit: '%',   color: '#22c55e', domain: [0, 100]    },
+  { key: 'avg_latency_ms', label: 'Avg Latency',    unit: 'ms',  color: '#f59e0b', domain: [0, 'auto'] },
+  { key: 'error_rate_pct', label: 'Error Rate',     unit: '%',   color: '#ef4444', domain: [0, 100]    },
 ]
+
+function getTrend(history, key) {
+  if (history.length < 4) return null
+  const vals = history.slice(-4).map(h => h[key] ?? 0)
+  const slope = vals[3] - vals[0]
+  if (slope > 2)  return 'up'
+  if (slope < -2) return 'down'
+  return null
+}
 
 function Sparkline({ data, dataKey, color, domain }) {
   return (
-    <ResponsiveContainer width="100%" height={60}>
-      <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+    <ResponsiveContainer width="100%" height={48}>
+      <AreaChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
         <defs>
-          <linearGradient id={`grad-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          <linearGradient id={`g-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor={color} stopOpacity={0.18} />
+            <stop offset="100%" stopColor={color} stopOpacity={0}    />
           </linearGradient>
         </defs>
         <YAxis domain={domain} hide />
         <Tooltip
-          contentStyle={{
-            background: '#161b22',
-            border: '1px solid #30363d',
-            borderRadius: 6,
-            fontSize: 12,
-          }}
+          contentStyle={{ background: '#0e1221', border: '1px solid #1c2d4a', borderRadius: 6, fontSize: 11, color: '#dde6f3' }}
           labelFormatter={() => ''}
-          formatter={(v) => [v, dataKey]}
+          formatter={v => [`${v}`, '']}
+          cursor={{ stroke: '#253d62', strokeWidth: 1 }}
         />
-        <Area
-          type="monotone"
-          dataKey={dataKey}
-          stroke={color}
-          strokeWidth={2}
-          fill={`url(#grad-${dataKey})`}
-          dot={false}
-          isAnimationActive={false}
-        />
+        <Area type="monotone" dataKey={dataKey} stroke={color} strokeWidth={1.5}
+          fill={`url(#g-${dataKey})`} dot={false} isAnimationActive={false} />
       </AreaChart>
     </ResponsiveContainer>
   )
 }
 
 function MetricCard({ label, unit, color, dataKey, domain, history, current }) {
+  const trend = getTrend(history, dataKey)
+  const val = current != null
+    ? (typeof current === 'number' ? current.toFixed(current < 10 ? 1 : 0) : current)
+    : '—'
+
   return (
-    <div style={styles.card}>
-      <div style={styles.cardHeader}>
-        <span style={{ ...styles.dot, background: color }} />
-        <span style={styles.label}>{label}</span>
+    <div className="card flex flex-col" style={{ borderTop: `2px solid ${color}20`, borderImage: 'none' }}>
+      {/* Top accent line */}
+      <div className="h-[2px] w-full rounded-t-xl" style={{ background: color }} />
+
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between mb-3">
+          <span className="panel-title">{label}</span>
+          {trend && (
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path
+                d={trend === 'up' ? 'M5 9V1M1.5 4.5L5 1L8.5 4.5' : 'M5 1V9M8.5 5.5L5 9L1.5 5.5'}
+                stroke={trend === 'up' ? color : '#3a5880'}
+                strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </div>
+
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[32px] font-bold leading-none tabular-nums tracking-tight" style={{ color }}>
+            {val}
+          </span>
+          <span className="text-xs font-semibold" style={{ color: `${color}80` }}>{unit}</span>
+        </div>
       </div>
-      <div style={{ ...styles.value, color }}>
-        {current ?? '—'}
-        <span style={styles.unit}> {unit}</span>
-      </div>
+
       <Sparkline data={history} dataKey={dataKey} color={color} domain={domain} />
     </div>
   )
@@ -92,59 +82,10 @@ export default function MetricsPanel({ history }) {
   const latest = history[history.length - 1] ?? {}
 
   return (
-    <section style={styles.grid}>
-      {CHARTS.map((c) => (
-        <MetricCard
-          key={c.key}
-          {...c}
-          history={history}
-          current={latest[c.key]}
-        />
+    <section className="grid grid-cols-4 gap-3">
+      {CHARTS.map(c => (
+        <MetricCard key={c.key} {...c} history={history} current={latest[c.key]} />
       ))}
     </section>
   )
-}
-
-const styles = {
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: 12,
-  },
-  card: {
-    background: '#161b22',
-    border: '1px solid #30363d',
-    borderRadius: 8,
-    padding: '14px 16px 10px',
-  },
-  cardHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    flexShrink: 0,
-  },
-  label: {
-    color: '#8b949e',
-    fontSize: 12,
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  value: {
-    fontSize: 26,
-    fontWeight: 700,
-    fontVariantNumeric: 'tabular-nums',
-    marginBottom: 6,
-  },
-  unit: {
-    fontSize: 13,
-    fontWeight: 400,
-    color: '#8b949e',
-  },
 }
