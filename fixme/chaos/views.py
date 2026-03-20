@@ -63,6 +63,10 @@ def inject_chaos(request):
 
     if scenario == "MEMORY_LEAK":
         state.start_memory_leak()
+    elif scenario == "NETWORK_LATENCY":
+        state.start_network_latency()
+    elif scenario == "ERROR_RAIN":
+        state.start_error_rain()
 
     # Auto-create an incident that engineers can track & resolve
     task = Task.objects.create(
@@ -119,6 +123,10 @@ def stop_chaos(request):
 
         if cfg.scenario == "MEMORY_LEAK":
             state.stop_memory_leak()
+        elif cfg.scenario == "NETWORK_LATENCY":
+            state.stop_network_latency()
+        elif cfg.scenario == "ERROR_RAIN":
+            state.stop_error_rain()
 
         ChaosEvent.objects.create(
             scenario=cfg.scenario,
@@ -126,6 +134,10 @@ def stop_chaos(request):
             message=f"Scenario {cfg.scenario} stopped.",
         )
         stopped.append(cfg.scenario)
+
+    # Reset request metrics once no chaos scenario remains active
+    if not ChaosConfig.objects.filter(is_active=True).exists():
+        state.reset_stats()
 
     return Response({"stopped": stopped})
 
