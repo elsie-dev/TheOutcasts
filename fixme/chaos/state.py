@@ -60,6 +60,8 @@ def start_network_latency() -> None:
 
 def stop_network_latency() -> None:
     _latency_stop.set()
+    with _lock:
+        _latencies.clear()
 
 
 # ── Error Rain simulator ──────────────────────────────────────────────────────
@@ -86,7 +88,11 @@ def start_error_rain() -> None:
 
 
 def stop_error_rain() -> None:
+    global _error_count, _request_count
     _error_rain_stop.set()
+    with _lock:
+        _error_count = 0
+        _request_count = 0
 
 
 # ── Request metrics ───────────────────────────────────────────────────────────

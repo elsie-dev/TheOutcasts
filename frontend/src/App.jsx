@@ -1,214 +1,207 @@
 import { useState, useCallback } from 'react'
+import { useAuth } from './contexts/AuthContext'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import MetricsPanel from './components/MetricsPanel'
 import ChaosControls from './components/ChaosControls'
 import IncidentFeed from './components/IncidentFeed'
 import { usePolling } from './hooks/usePolling'
 
-const MAX_HISTORY = 30  // 60 seconds of data at 2 s poll rate
+const MAX_HISTORY = 30
 
-const EMPTY_METRICS = {
-  cpu_percent: 0,
-  memory_mb: 0,
-  memory_percent: 0,
-  avg_latency_ms: 0,
-  error_rate_pct: 0,
-  active_scenarios: [],
+// ── Auth gate ─────────────────────────────────────────────────────────────────
+function AuthGate() {
+  const [page, setPage] = useState('login')
+  return page === 'login'
+    ? <LoginPage    onSwitchToRegister={() => setPage('register')} />
+    : <RegisterPage onSwitchToLogin={()    => setPage('login')}    />
 }
 
-export default function App() {
-  const [history, setHistory] = useState([])
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function Dashboard() {
+  const { user, logout } = useAuth()
+  const [history,         setHistory]         = useState([])
   const [activeScenarios, setActiveScenarios] = useState([])
-  const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [events,          setEvents]          = useState([])
+  const [loading,         setLoading]         = useState(false)
+  const [error,           setError]           = useState(null)
 
-  // ── Poll /api/metrics/ every 2 s ─────────────────────────────────────────
   const fetchMetrics = useCallback(async () => {
     try {
       const res = await fetch('/api/metrics/')
       if (!res.ok) return
       const data = await res.json()
-      const point = {
-        time: new Date().toLocaleTimeString('en-GB', {
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-        }),
-        cpu_percent: data.cpu_percent,
-        memory_mb: data.memory_mb,
+      setHistory(prev => [...prev.slice(-(MAX_HISTORY - 1)), {
+        time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        cpu_percent:    data.cpu_percent,
+        memory_mb:      data.memory_mb,
         avg_latency_ms: data.avg_latency_ms,
         error_rate_pct: data.error_rate_pct,
-      }
-      setHistory((prev) => [...prev.slice(-(MAX_HISTORY - 1)), point])
+      }])
       setActiveScenarios(data.active_scenarios ?? [])
-    } catch {
-      // silently ignore — server may be restarting during chaos
-    }
+    } catch { /* ignore during server chaos */ }
   }, [])
 
-  // ── Poll /api/chaos/status/ every 2 s ────────────────────────────────────
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/chaos/status/')
       if (!res.ok) return
       const data = await res.json()
       setEvents(data.recent_events ?? [])
-    } catch {
-      // silently ignore
-    }
+    } catch { /* ignore */ }
   }, [])
 
   usePolling(fetchMetrics, 2000)
-  usePolling(fetchStatus, 2000)
+  usePolling(fetchStatus,  2000)
 
-  // ── Inject chaos ──────────────────────────────────────────────────────────
   async function handleInject(scenario) {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
       const res = await fetch('/api/chaos/inject/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scenario }),
       })
-      if (!res.ok) {
-        const body = await res.json()
-        setError(body.error ?? 'Injection failed')
-      }
+      if (!res.ok) { const b = await res.json(); setError(b.error ?? 'Injection failed') }
       await Promise.all([fetchMetrics(), fetchStatus()])
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
 
-  // ── Stop chaos ────────────────────────────────────────────────────────────
   async function handleStop(scenario) {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
       await fetch('/api/chaos/stop/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scenario }),
       })
       await Promise.all([fetchMetrics(), fetchStatus()])
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
 
-  const systemHealthy = activeScenarios.length === 0
+  const healthy = activeScenarios.length === 0
 
   return (
-    <div style={styles.app}>
+    <div className="min-h-screen bg-bg flex flex-col">
       {/* ── Header ── */}
-      <header style={styles.header}>
-        <div style={styles.brand}>
-          <span style={styles.logo}></span>
-          <span style={styles.title}>FixMe · Chaos Lab</span>
-        </div>
-        <div style={styles.headerRight}>
-          {error && <span style={styles.errorBanner}>{error}</span>}
-          <div
-            style={{
-              ...styles.statusBadge,
-              background: systemHealthy ? '#1a2f1a' : '#2f1a1a',
-              border: `1px solid ${systemHealthy ? '#3fb950' : '#f85149'}`,
-              color: systemHealthy ? '#3fb950' : '#f85149',
-            }}
-          >
-            <span
-              style={{
-                ...styles.pulse,
-                background: systemHealthy ? '#3fb950' : '#f85149',
-              }}
-            />
-            {systemHealthy ? 'SYSTEM HEALTHY' : `CHAOS ACTIVE — ${activeScenarios.join(', ')}`}
+      <header className="border-b border-bdr" style={{ background: '#0a0e1c' }}>
+        <div className="max-w-[1440px] mx-auto h-13 px-6 flex items-center justify-between gap-4" style={{ height: 52 }}>
+
+          {/* Brand */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(79,142,245,0.12)', border: '1px solid rgba(79,142,245,0.25)' }}>
+              <svg width="18" height="18" viewBox="0 0 36 36" fill="none">
+                <path d="M18 3L33 11.25V28.75L18 37L3 28.75V11.25L18 3Z" stroke="#4f8ef5" strokeWidth="2" fill="rgba(79,142,245,0.1)"/>
+                <path d="M18 10L26 14.5V23.5L18 28L10 23.5V14.5L18 10Z" fill="rgba(79,142,245,0.25)" stroke="#4f8ef5" strokeWidth="1.5"/>
+                <circle cx="18" cy="19" r="3.5" fill="#4f8ef5"/>
+              </svg>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-[14px] text-tx tracking-tight">FixMe</span>
+              <span className="text-txm text-[13px]">/</span>
+              <span className="text-[12px] font-medium" style={{ color: '#4f8ef5' }}>Chaos Lab</span>
+            </div>
+          </div>
+
+          {/* Nav tabs */}
+          <nav className="hidden md:flex items-center gap-1 flex-shrink-0">
+            {['Dashboard', 'Experiments', 'Landscape'].map((tab, i) => (
+              <span
+                key={tab}
+                className="px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors cursor-default"
+                style={i === 0
+                  ? { background: 'rgba(79,142,245,0.12)', color: '#4f8ef5', border: '1px solid rgba(79,142,245,0.2)' }
+                  : { color: '#3a5880' }
+                }
+              >
+                {tab}
+              </span>
+            ))}
+          </nav>
+
+          {/* Right cluster */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-1.5 text-[11px] text-cred px-2.5 py-1 rounded-lg" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.25" stroke="#ef4444" strokeWidth="1.3"/><path d="M5 2.5V5.5" stroke="#ef4444" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                {error}
+              </div>
+            )}
+
+            {/* System status pill */}
+            <div
+              className="flex items-center gap-2 text-[11px] font-semibold px-3 py-1.5 rounded-full"
+              style={healthy
+                ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#22c55e' }
+                : { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444' }
+              }
+            >
+              <span className={`w-1.5 h-1.5 rounded-full animate-pulse-dot ${healthy ? 'bg-cgreen' : 'bg-cred'}`} />
+              {healthy ? 'Operational' : `${activeScenarios.length} Attack${activeScenarios.length > 1 ? 's' : ''} Active`}
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-bdr flex-shrink-0" />
+
+            {/* User */}
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold uppercase"
+                style={{ background: 'rgba(79,142,245,0.15)', border: '1px solid rgba(79,142,245,0.25)', color: '#4f8ef5' }}
+              >
+                {user?.name?.[0] ?? 'U'}
+              </div>
+              <span className="text-[12px] text-tx2 hidden lg:block">{user?.name}</span>
+              <button
+                onClick={logout}
+                className="text-[11px] text-txm hover:text-tx2 transition-colors px-2 py-1 rounded hover:bg-surface2"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* ── Live metrics row ── */}
-      <MetricsPanel history={history} />
+      {/* ── Chaos alert bar ── */}
+      {!healthy && (
+        <div className="animate-fade-in border-b" style={{ background: 'rgba(245,158,11,0.04)', borderColor: 'rgba(245,158,11,0.15)' }}>
+          <div className="max-w-[1440px] mx-auto px-6 h-9 flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-camber animate-pulse-dot" />
+              <span className="text-[10px] font-bold text-camber tracking-[0.12em] uppercase">Chaos Active</span>
+            </div>
+            <div className="w-px h-3 bg-bdr" />
+            <div className="flex items-center gap-2">
+              {activeScenarios.map(id => (
+                <span key={id} className="text-[10px] font-semibold px-2 py-0.5 rounded-sm"
+                  style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#f59e0b' }}>
+                  {id.replace(/_/g, ' ')}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* ── Controls + Feed row ── */}
-      <div style={styles.bottomGrid}>
-        <ChaosControls
-          activeScenarios={activeScenarios}
-          onInject={handleInject}
-          onStop={handleStop}
-          loading={loading}
-        />
-        <IncidentFeed events={events} />
+      {/* ── Page content ── */}
+      <div className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-5 flex flex-col gap-4">
+        <MetricsPanel history={history} />
+        <div className="grid gap-4 flex-1" style={{ gridTemplateColumns: '300px 1fr' }}>
+          <ChaosControls
+            activeScenarios={activeScenarios}
+            onInject={handleInject}
+            onStop={handleStop}
+            loading={loading}
+          />
+          <IncidentFeed events={events} />
+        </div>
       </div>
     </div>
   )
 }
 
-const styles = {
-  app: {
-    minHeight: '100vh',
-    padding: '20px 24px 32px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    maxWidth: 1400,
-    margin: '0 auto',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingBottom: 16,
-    borderBottom: '1px solid #30363d',
-  },
-  brand: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logo: { fontSize: 22 },
-  title: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: '#e6edf3',
-    letterSpacing: '-0.01em',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-  },
-  statusBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 7,
-    fontSize: 12,
-    fontWeight: 700,
-    padding: '6px 14px',
-    borderRadius: 20,
-    letterSpacing: '0.04em',
-  },
-  pulse: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    flexShrink: 0,
-  },
-  errorBanner: {
-    background: '#2f1a1a',
-    border: '1px solid #f85149',
-    color: '#f85149',
-    fontSize: 12,
-    padding: '5px 12px',
-    borderRadius: 6,
-  },
-  bottomGrid: {
-    display: 'grid',
-    gridTemplateColumns: '320px 1fr',
-    gap: 16,
-    flex: 1,
-  },
+// ── Root ──────────────────────────────────────────────────────────────────────
+export default function App() {
+  const { isAuthenticated } = useAuth()
+  return isAuthenticated ? <Dashboard /> : <AuthGate />
 }

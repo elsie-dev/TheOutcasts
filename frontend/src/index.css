@@ -1,46 +1,58 @@
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+    background: #07090f;
+    color: #dde6f3;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #1c2d4a transparent;
+  }
+
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1c2d4a; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #253d62; }
 }
 
-:root {
-  --bg:        #0d1117;
-  --surface:   #161b22;
-  --border:    #30363d;
-  --text:      #e6edf3;
-  --muted:     #8b949e;
-  --green:     #3fb950;
-  --red:       #f85149;
-  --amber:     #d29922;
-  --blue:      #58a6ff;
-  --purple:    #bc8cff;
-}
+@layer components {
+  .btn-primary {
+    @apply w-full py-2.5 px-4 rounded-lg font-semibold text-sm text-white
+           bg-cblue hover:bg-blue-500 active:scale-[0.98]
+           transition-all duration-150 focus:outline-none
+           focus:ring-2 focus:ring-cblue focus:ring-offset-2 focus:ring-offset-surface;
+  }
 
-html, body, #root {
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-}
+  .btn-ghost {
+    @apply w-full py-2.5 px-4 rounded-lg font-semibold text-sm text-tx2
+           border border-bdr hover:border-bdr2 hover:text-tx
+           bg-transparent transition-all duration-150 focus:outline-none;
+  }
 
-button {
-  cursor: pointer;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 16px;
-  transition: opacity 0.15s;
-}
+  .input-field {
+    @apply w-full bg-surface2 border border-bdr rounded-lg px-3.5 py-2.5
+           text-sm text-tx placeholder-txm
+           focus:outline-none focus:border-cblue focus:ring-1 focus:ring-cblue
+           transition-colors duration-150;
+  }
 
-button:hover:not(:disabled) {
-  opacity: 0.85;
-}
+  .card {
+    @apply bg-surface border border-bdr rounded-xl overflow-hidden;
+  }
 
-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  .panel-title {
+    @apply text-[10px] font-bold text-txm tracking-[0.12em] uppercase;
+  }
+
+  .section-divider {
+    @apply border-t border-bdr/60 mx-4 my-0;
+  }
 }
