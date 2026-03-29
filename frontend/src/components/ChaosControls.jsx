@@ -62,8 +62,9 @@ const SCENARIOS = [
   },
 ]
 
-export default function ChaosControls({ activeScenarios, onInject, onStop, loading }) {
+export default function ChaosControls({ activeScenarios, onInject, onStop, loading, selectedApp }) {
   const anyActive = activeScenarios.length > 0
+  const noTarget = !selectedApp
 
   return (
     <aside className="card flex flex-col" style={{ minWidth: 0 }}>
@@ -74,17 +75,41 @@ export default function ChaosControls({ activeScenarios, onInject, onStop, loadi
           <div className="w-1.5 h-1.5 rounded-full bg-cblue" />
           <span className="panel-title">Attack Scenarios</span>
         </div>
-        <span
-          className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-          style={{ background: '#162036', border: '1px solid #1c2d4a', color: '#3a5880' }}
-        >
-          {SCENARIOS.length}
-        </span>
+        {selectedApp ? (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+            style={{ background: 'rgba(79,142,245,0.1)', border: '1px solid rgba(79,142,245,0.25)', color: '#4f8ef5' }}
+          >
+            {selectedApp.name}
+          </span>
+        ) : (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+            style={{ background: '#162036', border: '1px solid #1c2d4a', color: '#3a5880' }}
+          >
+            {SCENARIOS.length}
+          </span>
+        )}
       </div>
+
+      {/* ── No target warning ──────────────────────────────── */}
+      {noTarget && (
+        <div className="mx-4 mt-3 px-3 py-2.5 rounded-lg flex items-start gap-2.5" style={{ background: '#0d1525', border: '1px solid #1c2d4a' }}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="flex-shrink-0 mt-0.5">
+            <circle cx="6" cy="6" r="5" stroke="#3a5880" strokeWidth="1.2"/>
+            <line x1="6" y1="4" x2="6" y2="6.5" stroke="#3a5880" strokeWidth="1.2" strokeLinecap="round"/>
+            <circle cx="6" cy="8.5" r="0.6" fill="#3a5880"/>
+          </svg>
+          <div>
+            <p className="text-[11px] font-semibold" style={{ color: '#3a5880' }}>No app onboarded</p>
+            <p className="text-[10px] mt-0.5" style={{ color: '#2a4060' }}>Onboard an application above to begin chaos testing</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Scenario list ──────────────────────────────────── */}
       <div className="flex-1 py-1.5">
-        {SCENARIOS.map((sc) => {
+        {SCENARIOS.map((sc, idx) => {
           const isActive = activeScenarios.includes(sc.id)
           return (
             <div
@@ -95,6 +120,14 @@ export default function ChaosControls({ activeScenarios, onInject, onStop, loadi
                 : { borderLeft: '2px solid transparent' }
               }
             >
+              {/* Step number */}
+              <div
+                className="absolute left-1 top-3 text-[8px] font-bold"
+                style={{ color: isActive ? sc.color : '#2a4060', lineHeight: 1 }}
+              >
+                {idx + 1}
+              </div>
+
               {/* Icon */}
               <div
                 className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
@@ -138,7 +171,7 @@ export default function ChaosControls({ activeScenarios, onInject, onStop, loadi
 
               {/* Action button */}
               <button
-                disabled={loading}
+                disabled={loading || (noTarget && !isActive)}
                 onClick={() => isActive ? onStop(sc.id) : onInject(sc.id)}
                 className="flex-shrink-0 text-[11px] font-bold px-3.5 py-1.5 rounded-md transition-all disabled:opacity-40"
                 style={isActive

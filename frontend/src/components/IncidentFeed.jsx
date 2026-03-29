@@ -54,6 +54,16 @@ function TimelineEvent({ event, isLast }) {
                 {event.scenario.replace(/_/g, ' ')}
               </span>
             )}
+
+            {/* App badge */}
+            {event.app_name && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm tracking-wider"
+                style={{ color: '#4f8ef5', background: 'rgba(79,142,245,0.08)', border: '1px solid rgba(79,142,245,0.2)' }}
+              >
+                {event.app_name}
+              </span>
+            )}
           </div>
 
           <span className="text-[10px] text-txm tabular-nums flex-shrink-0 mt-0.5">

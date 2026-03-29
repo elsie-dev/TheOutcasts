@@ -11,10 +11,25 @@ from rest_framework.response import Response
 
 from fixme.tasks.models import Task
 from . import prom, state
-from .models import ChaosConfig, ChaosEvent
-from .serializers import ChaosConfigSerializer, ChaosEventSerializer
+from .models import ChaosConfig, ChaosEvent, RegisteredApp
+from .serializers import ChaosConfigSerializer, ChaosEventSerializer, RegisteredAppSerializer
 
 _VALID_SCENARIOS = ["MEMORY_LEAK", "NETWORK_LATENCY", "ERROR_RAIN"]
+
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def apps_list(request):
+    """List all registered target applications, or register a new one."""
+    if request.method == "POST":
+        serializer = RegisteredAppSerializer(data=request.data)
+        if serializer.is_valid():
+            app = serializer.save()
+            return Response(RegisteredAppSerializer(app).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    apps = RegisteredApp.objects.prefetch_related('chaos_configs').all()
+    return Response(RegisteredAppSerializer(apps, many=True).data)
 
 
 @api_view(["GET"])
@@ -43,7 +58,7 @@ def metrics(request):
 def inject_chaos(request):
     """
     Activate a chaos scenario and create a matching incident Task.
-    Body: { "scenario": "MEMORY_LEAK" | "NETWORK_LATENCY" | "ERROR_RAIN" }
+    Body: { "scenario": "MEMORY_LEAK" | "NETWORK_LATENCY" | "ERROR_RAIN", "app_id": <int> (optional) }
     """
     scenario = request.data.get("scenario")
     if scenario not in _VALID_SCENARIOS:
@@ -52,6 +67,14 @@ def inject_chaos(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    app = None
+    app_id = request.data.get("app_id")
+    if app_id:
+        try:
+            app = RegisteredApp.objects.get(pk=app_id)
+        except RegisteredApp.DoesNotExist:
+            return Response({"error": f"App with id {app_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+
     config, _ = ChaosConfig.objects.get_or_create(scenario=scenario)
     if config.is_active:
         return Response({"detail": f"{scenario} is already active"})
@@ -59,6 +82,7 @@ def inject_chaos(request):
     config.is_active = True
     config.activated_at = timezone.now()
     config.deactivated_at = None
+    config.app = app
     config.save()
 
     if scenario == "MEMORY_LEAK":
@@ -68,11 +92,17 @@ def inject_chaos(request):
     elif scenario == "ERROR_RAIN":
         state.start_error_rain()
 
+    # Update app status
+    if app:
+        app.status = "DOWN" if scenario == "ERROR_RAIN" else "DEGRADED"
+        app.save()
+
     # Auto-create an incident that engineers can track & resolve
+    app_label = f" on {app.name}" if app else ""
     task = Task.objects.create(
-        title=f"INCIDENT: {scenario.replace('_', ' ').title()} detected",
+        title=f"INCIDENT: {scenario.replace('_', ' ').title()} detected{app_label}",
         description=(
-            f"Chaos scenario '{scenario}' was injected at {timezone.now().isoformat()}. "
+            f"Chaos scenario '{scenario}' was injected{app_label} at {timezone.now().isoformat()}. "
             "Investigate impact and resolve."
         ),
         status="PENDING",
@@ -83,14 +113,16 @@ def inject_chaos(request):
             ChaosEvent(
                 scenario=scenario,
                 event_type="INJECTED",
-                message=f"Scenario {scenario} activated.",
+                message=f"Scenario {scenario} activated{app_label}.",
                 task=task,
+                app=app,
             ),
             ChaosEvent(
                 scenario=scenario,
                 event_type="INCIDENT_CREATED",
                 message=f"Incident task #{task.id} auto-created.",
                 task=task,
+                app=app,
             ),
         ]
     )
@@ -111,12 +143,13 @@ def stop_chaos(request):
     scenario = request.data.get("scenario", "ALL")
 
     if scenario == "ALL":
-        configs = list(ChaosConfig.objects.filter(is_active=True))
+        configs = list(ChaosConfig.objects.filter(is_active=True).select_related('app'))
     else:
-        configs = list(ChaosConfig.objects.filter(scenario=scenario, is_active=True))
+        configs = list(ChaosConfig.objects.filter(scenario=scenario, is_active=True).select_related('app'))
 
     stopped = []
     for cfg in configs:
+        app = cfg.app
         cfg.is_active = False
         cfg.deactivated_at = timezone.now()
         cfg.save()
@@ -132,8 +165,14 @@ def stop_chaos(request):
             scenario=cfg.scenario,
             event_type="STOPPED",
             message=f"Scenario {cfg.scenario} stopped.",
+            app=app,
         )
         stopped.append(cfg.scenario)
+
+        # Restore app status if no more active scenarios on it
+        if app and not app.chaos_configs.filter(is_active=True).exists():
+            app.status = "HEALTHY"
+            app.save()
 
     # Reset request metrics once no chaos scenario remains active
     if not ChaosConfig.objects.filter(is_active=True).exists():
@@ -172,8 +211,8 @@ def prom_metrics(request):
 @permission_classes([AllowAny])
 def chaos_status(request):
     """Current scenario states + last 20 events — polled by the frontend."""
-    configs = ChaosConfig.objects.all()
-    events = ChaosEvent.objects.select_related("task").order_by("-timestamp")[:20]
+    configs = ChaosConfig.objects.select_related('app').all()
+    events = ChaosEvent.objects.select_related("task", "app").order_by("-timestamp")[:20]
     return Response(
         {
             "scenarios": ChaosConfigSerializer(configs, many=True).data,

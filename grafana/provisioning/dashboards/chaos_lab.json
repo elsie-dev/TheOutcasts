@@ -6,7 +6,7 @@
   "schemaVersion": 38,
   "version": 1,
   "refresh": "5s",
-  "time": { "from": "now-15m", "to": "now" },
+  "time": { "from": "now-30m", "to": "now" },
   "timezone": "browser",
   "liveNow": true,
   "graphTooltip": 1,
@@ -339,6 +339,38 @@
           "datasource": { "type": "prometheus", "uid": "fixme-prometheus" },
           "expr": "fixme_error_count",
           "legendFormat": "Errors",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Request Throughput — Baseline vs Chaos",
+      "type": "timeseries",
+      "description": "Cumulative request count. Steady climb = healthy baseline. Flat = requests stalled.",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "fixme-prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "#4f8ef5" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "gradientMode": "opacity" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["last", "max"], "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "fixme-prometheus" },
+          "expr": "fixme_request_count",
+          "legendFormat": "Total Requests (App A)",
           "refId": "A"
         }
       ]

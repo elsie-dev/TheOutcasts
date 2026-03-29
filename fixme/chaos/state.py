@@ -139,3 +139,32 @@ def reset_stats() -> None:
     _prom.error_rate_pct.set(0)
     _prom.error_count.set(0)
     _prom.request_count.set(0)
+
+
+# ── Baseline Traffic Simulator ────────────────────────────────────────────────
+_baseline_thread: threading.Thread | None = None
+_baseline_stop = threading.Event()
+
+
+def start_baseline_traffic() -> None:
+    """
+    Simulate steady background traffic so Grafana shows realistic non-flat
+    metrics even before any chaos scenario is injected.
+    ~3-5 req/s, 30-150 ms latency, ~1% error rate.
+    """
+    global _baseline_thread, _baseline_stop
+    if _baseline_thread and _baseline_thread.is_alive():
+        return  # already running
+    _baseline_stop = threading.Event()
+
+    def _loop() -> None:
+        while not _baseline_stop.is_set():
+            time.sleep(random.uniform(0.2, 0.4))
+            if not _baseline_stop.is_set():
+                latency = random.uniform(30.0, 150.0)
+                record_request(latency, is_error=False)  # clean baseline — no errors
+
+    _baseline_thread = threading.Thread(
+        target=_loop, daemon=True, name="chaos-baseline-traffic"
+    )
+    _baseline_thread.start()

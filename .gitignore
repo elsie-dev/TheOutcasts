@@ -133,3 +133,6 @@ venv/
 docs/_build/
 
 .mise.toml
+
+# Claude Code
+.claude/

@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import MetricsPanel from './components/MetricsPanel'
 import ChaosControls from './components/ChaosControls'
 import IncidentFeed from './components/IncidentFeed'
+import AppPanel from './components/AppPanel'
 import { usePolling } from './hooks/usePolling'
 
 const MAX_HISTORY = 30
@@ -23,8 +24,11 @@ function Dashboard() {
   const [history,         setHistory]         = useState([])
   const [activeScenarios, setActiveScenarios] = useState([])
   const [events,          setEvents]          = useState([])
+  const [apps,            setApps]            = useState([])
+  const [selectedAppId,   setSelectedAppId]   = useState(null)
   const [loading,         setLoading]         = useState(false)
   const [error,           setError]           = useState(null)
+  const autoOnboarded = useRef(false)
 
   const fetchMetrics = useCallback(async () => {
     try {
@@ -51,18 +55,35 @@ function Dashboard() {
     } catch { /* ignore */ }
   }, [])
 
+  const fetchApps = useCallback(async () => {
+    try {
+      const res = await fetch('/api/chaos/apps/')
+      if (!res.ok) return
+      const data = await res.json()
+      setApps(data)
+      // Auto-onboard the first app (App A) on first load
+      if (!autoOnboarded.current && data.length > 0) {
+        autoOnboarded.current = true
+        setSelectedAppId(data[0].id)
+      }
+    } catch { /* ignore */ }
+  }, [])
+
   usePolling(fetchMetrics, 2000)
   usePolling(fetchStatus,  2000)
+  usePolling(fetchApps,    3000)
 
   async function handleInject(scenario) {
     setLoading(true); setError(null)
     try {
+      const body = { scenario }
+      if (selectedAppId) body.app_id = selectedAppId
       const res = await fetch('/api/chaos/inject/', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenario }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) { const b = await res.json(); setError(b.error ?? 'Injection failed') }
-      await Promise.all([fetchMetrics(), fetchStatus()])
+      await Promise.all([fetchMetrics(), fetchStatus(), fetchApps()])
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
 
@@ -73,11 +94,12 @@ function Dashboard() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scenario }),
       })
-      await Promise.all([fetchMetrics(), fetchStatus()])
+      await Promise.all([fetchMetrics(), fetchStatus(), fetchApps()])
     } catch (e) { setError(e.message) } finally { setLoading(false) }
   }
 
   const healthy = activeScenarios.length === 0
+  const selectedApp = apps.find(a => a.id === selectedAppId) ?? null
 
   return (
     <div className="min-h-screen bg-bg flex flex-col">
@@ -186,12 +208,19 @@ function Dashboard() {
       {/* ── Page content ── */}
       <div className="flex-1 max-w-[1440px] w-full mx-auto px-6 py-5 flex flex-col gap-4">
         <MetricsPanel history={history} />
+        <AppPanel
+          apps={apps}
+          selectedAppId={selectedAppId}
+          onSelectApp={setSelectedAppId}
+          onRefreshApps={fetchApps}
+        />
         <div className="grid gap-4 flex-1" style={{ gridTemplateColumns: '300px 1fr' }}>
           <ChaosControls
             activeScenarios={activeScenarios}
             onInject={handleInject}
             onStop={handleStop}
             loading={loading}
+            selectedApp={selectedApp}
           />
           <IncidentFeed events={events} />
         </div>

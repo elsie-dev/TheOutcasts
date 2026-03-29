@@ -13,6 +13,25 @@ EVENT_TYPES = [
     ("INCIDENT_CREATED", "Incident Created"),
 ]
 
+APP_STATUS_CHOICES = [
+    ("HEALTHY", "Healthy"),
+    ("DEGRADED", "Degraded"),
+    ("DOWN", "Down"),
+]
+
+
+class RegisteredApp(models.Model):
+    """A target application that can have chaos scenarios injected into it."""
+
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    base_url = models.CharField(max_length=255, blank=True, default="")
+    status = models.CharField(max_length=20, choices=APP_STATUS_CHOICES, default="HEALTHY")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
 
 class ChaosConfig(models.Model):
     """One row per scenario — acts as a toggleable on/off switch."""
@@ -21,6 +40,13 @@ class ChaosConfig(models.Model):
     is_active = models.BooleanField(default=False)
     activated_at = models.DateTimeField(null=True, blank=True)
     deactivated_at = models.DateTimeField(null=True, blank=True)
+    app = models.ForeignKey(
+        RegisteredApp,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="chaos_configs",
+    )
 
     def __str__(self):
         return f"{self.scenario}: {'ON' if self.is_active else 'OFF'}"
@@ -35,6 +61,13 @@ class ChaosEvent(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     task = models.ForeignKey(
         "tasks.Task",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="chaos_events",
+    )
+    app = models.ForeignKey(
+        RegisteredApp,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
