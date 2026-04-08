@@ -125,18 +125,12 @@ function Dashboard() {
 
           {/* Nav tabs */}
           <nav className="hidden md:flex items-center gap-1 flex-shrink-0">
-            {['Dashboard', 'Experiments', 'Landscape'].map((tab, i) => (
-              <span
-                key={tab}
-                className="px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors cursor-default"
-                style={i === 0
-                  ? { background: 'rgba(79,142,245,0.12)', color: '#4f8ef5', border: '1px solid rgba(79,142,245,0.2)' }
-                  : { color: '#3a5880' }
-                }
-              >
-                {tab}
-              </span>
-            ))}
+            <span
+              className="px-3 py-1.5 rounded-md text-[12px] font-medium cursor-default"
+              style={{ background: 'rgba(79,142,245,0.12)', color: '#4f8ef5', border: '1px solid rgba(79,142,245,0.2)' }}
+            >
+              Dashboard
+            </span>
           </nav>
 
           {/* Right cluster */}
