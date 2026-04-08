@@ -28,5 +28,9 @@ django-cors-headers
 # Observability
 prometheus_client
 
+# AI — incident analysis + narration
+groq
+httpx
+
 gunicorn
 whitenoise

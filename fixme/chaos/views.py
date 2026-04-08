@@ -1,5 +1,7 @@
 import os
 
+import httpx
+from groq import Groq
 import psutil
 from django.http import HttpResponse
 from django.utils import timezone
@@ -15,6 +17,8 @@ from .models import ChaosConfig, ChaosEvent, RegisteredApp
 from .serializers import ChaosConfigSerializer, ChaosEventSerializer, RegisteredAppSerializer
 
 _VALID_SCENARIOS = ["MEMORY_LEAK", "NETWORK_LATENCY", "ERROR_RAIN"]
+# ElevenLabs voice — "Adam" (pre-made, guaranteed on free tier)
+_ELEVENLABS_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 
 @api_view(["GET", "POST"])
@@ -205,6 +209,90 @@ def prom_metrics(request):
         )
 
     return HttpResponse(generate_latest(), content_type=CONTENT_TYPE_LATEST)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def analyze(request):
+    """
+    Call Claude to generate a plain-English incident diagnosis based on
+    live metrics and active chaos scenarios.
+    """
+    api_key = os.environ.get("GROQ_API_KEY", "")
+    if not api_key:
+        return Response({"error": "GROQ_API_KEY not configured"}, status=500)
+
+    process = psutil.Process(os.getpid())
+    req_stats = state.get_request_stats()
+    active = list(ChaosConfig.objects.filter(is_active=True).values_list("scenario", flat=True))
+    mem_mb = round(process.memory_info().rss / 1024 / 1024, 1)
+    cpu = psutil.cpu_percent(interval=None)
+
+    scenario_labels = {
+        "MEMORY_LEAK": "Memory Leak",
+        "NETWORK_LATENCY": "Network Latency",
+        "ERROR_RAIN": "Error Rain (HTTP 500s)",
+    }
+    active_readable = [scenario_labels.get(s, s) for s in active]
+
+    prompt = f"""You are a senior incident analyst on a live war room call.
+
+System state right now:
+- Active chaos: {active_readable if active_readable else ['None']}
+- Memory: {mem_mb} MB | CPU: {cpu}% | Latency: {req_stats['avg_latency_ms']} ms | Errors: {req_stats['error_rate_pct']}%
+
+Write exactly 2 short punchy sentences. First sentence: what is failing and the user impact. Second sentence: what the engineer must do right now.
+No bullet points. No fluff. Maximum 40 words total."""
+
+    try:
+        client = Groq(api_key=api_key)
+        chat = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            max_tokens=80,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        diagnosis = chat.choices[0].message.content.strip()
+        return Response({"diagnosis": diagnosis})
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def narrate(request):
+    """
+    Send diagnosis text to ElevenLabs TTS and return MP3 audio as base64.
+    Body: { "text": "..." }
+    """
+    api_key = os.environ.get("ELEVENLABS_API_KEY", "")
+    if not api_key:
+        return Response({"error": "ELEVENLABS_API_KEY not configured"}, status=500)
+
+    text = request.data.get("text", "").strip()
+    if not text:
+        return Response({"error": "text is required"}, status=400)
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{_ELEVENLABS_VOICE_ID}"
+    headers = {
+        "xi-api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+    }
+    payload = {
+        "text": text,
+        "model_id": "eleven_turbo_v2_5",
+        "voice_settings": {"stability": 0.4, "similarity_boost": 0.8},
+    }
+
+    try:
+        resp = httpx.post(url, json=payload, headers=headers, timeout=20)
+        if resp.status_code != 200:
+            return Response({"error": f"ElevenLabs error: {resp.text}"}, status=502)
+        import base64
+        audio_b64 = base64.b64encode(resp.content).decode("utf-8")
+        return Response({"audio_b64": audio_b64, "mime": "audio/mpeg"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
 
 
 @api_view(["GET"])

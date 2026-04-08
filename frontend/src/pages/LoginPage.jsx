@@ -1,5 +1,140 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+
+const WELCOME_TEXT =
+  "Welcome to Elsie's live demonstration on chaos engineering. " +
+  "Today, you will witness how production systems break — memory leaks, network failures, error storms — " +
+  "and how engineers detect, diagnose, and recover in real time. Let the chaos begin."
+
+function WelcomeOverlay({ onDone }) {
+  const [playing,  setPlaying]  = useState(false)
+  const [done,     setDone]     = useState(false)
+  const [error,    setError]    = useState(null)
+  const audioRef = useRef(null)
+
+  async function handleBegin() {
+    setPlaying(true)
+    try {
+      const res = await fetch('/api/chaos/narrate/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: WELCOME_TEXT }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+
+      const bytes = Uint8Array.from(atob(data.audio_b64), c => c.charCodeAt(0))
+      const blob  = new Blob([bytes], { type: 'audio/mpeg' })
+      const url   = URL.createObjectURL(blob)
+      const audio = audioRef.current
+      audio.src = url
+      audio.load()
+      audio.onended = () => { URL.revokeObjectURL(url); setDone(true); setTimeout(onDone, 600) }
+      audio.onerror = () => { setPlaying(false); setError('Audio failed — click Skip') }
+      await audio.play()
+    } catch (e) {
+      setPlaying(false)
+      setError(e.message)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center"
+      style={{ background: '#050913' }}
+    >
+      {/* Animated background orbs */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-200px] left-[-200px] w-[600px] h-[600px] rounded-full blur-3xl animate-pulse"
+          style={{ background: 'rgba(79,142,245,0.04)' }} />
+        <div className="absolute bottom-[-200px] right-[-200px] w-[500px] h-[500px] rounded-full blur-3xl animate-pulse"
+          style={{ background: 'rgba(167,139,250,0.04)', animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-3xl"
+          style={{ background: 'rgba(239,68,68,0.02)' }} />
+      </div>
+
+      {/* Grid lines */}
+      <div className="absolute inset-0 opacity-10"
+        style={{ backgroundImage: 'linear-gradient(rgba(79,142,245,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(79,142,245,0.3) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+
+      <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center max-w-2xl">
+
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(79,142,245,0.1)', border: '1px solid rgba(79,142,245,0.25)' }}>
+            <svg width="26" height="26" viewBox="0 0 36 36" fill="none">
+              <path d="M18 3L33 11.25V28.75L18 37L3 28.75V11.25L18 3Z" stroke="#4f8ef5" strokeWidth="2" fill="rgba(79,142,245,0.1)"/>
+              <path d="M18 10L26 14.5V23.5L18 28L10 23.5V14.5L18 10Z" fill="rgba(79,142,245,0.25)" stroke="#4f8ef5" strokeWidth="1.5"/>
+              <circle cx="18" cy="19" r="3.5" fill="#4f8ef5"/>
+            </svg>
+          </div>
+          <div className="text-left">
+            <p className="text-base font-bold text-tx tracking-tight">FixMe</p>
+            <p className="text-xs" style={{ color: '#4f8ef5' }}>Chaos Lab</p>
+          </div>
+        </div>
+
+        {/* Headline */}
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-bold tracking-[0.2em] uppercase" style={{ color: '#4f8ef5' }}>
+            Live Demo Presentation
+          </p>
+          <h1 className="text-4xl font-bold text-tx leading-tight tracking-tight">
+            Chaos Engineering<br />
+            <span style={{ color: '#4f8ef5' }}>in Production</span>
+          </h1>
+          <p className="text-sm" style={{ color: '#3a5880' }}>
+            by <span className="font-semibold" style={{ color: '#dde6f3' }}>Elsie</span> · TheOutcasts
+          </p>
+        </div>
+
+        {/* Begin button or playing state */}
+        {!playing ? (
+          <button
+            onClick={handleBegin}
+            className="mt-2 flex items-center gap-3 px-8 py-4 rounded-xl text-sm font-bold tracking-wide transition-all hover:scale-105"
+            style={{ background: 'rgba(79,142,245,0.12)', border: '1px solid rgba(79,142,245,0.35)', color: '#4f8ef5' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="7" stroke="#4f8ef5" strokeWidth="1.3"/>
+              <path d="M6.5 5.5L11 8L6.5 10.5V5.5Z" fill="#4f8ef5"/>
+            </svg>
+            Begin Presentation
+          </button>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-2 px-6 py-3 rounded-xl"
+              style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)' }}>
+              <span className="w-2 h-2 rounded-full animate-pulse-dot" style={{ background: '#a78bfa' }} />
+              <span className="text-sm font-semibold" style={{ color: '#a78bfa' }}>Speaking…</span>
+            </div>
+            {/* Audio bars visualiser */}
+            <div className="flex items-end gap-1 h-8">
+              {[4,7,5,9,6,8,4,7,5,9,6,4].map((h, i) => (
+                <div key={i} className="w-1 rounded-full animate-pulse"
+                  style={{ height: `${h * 3}px`, background: '#a78bfa', opacity: 0.6, animationDelay: `${i * 0.1}s` }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Skip link */}
+        <button
+          onClick={onDone}
+          className="text-xs transition-colors"
+          style={{ color: '#2a4060' }}
+          onMouseEnter={e => e.target.style.color = '#3a5880'}
+          onMouseLeave={e => e.target.style.color = '#2a4060'}
+        >
+          {error ? `⚠ ${error} — ` : ''}Skip intro →
+        </button>
+      </div>
+
+      <audio ref={audioRef} style={{ display: 'none' }} />
+    </div>
+  )
+}
 
 function HexLogo() {
   return (
@@ -21,10 +156,11 @@ const FEATURES = [
 
 export default function LoginPage({ onSwitchToRegister }) {
   const { login } = useAuth()
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [error,    setError]    = useState('')
-  const [loading,  setLoading]  = useState(false)
+  const [email,       setEmail]       = useState('')
+  const [password,    setPassword]    = useState('')
+  const [error,       setError]       = useState('')
+  const [loading,     setLoading]     = useState(false)
+  const [showIntro,   setShowIntro]   = useState(true)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -40,6 +176,8 @@ export default function LoginPage({ onSwitchToRegister }) {
   }
 
   return (
+    <>
+      {showIntro && <WelcomeOverlay onDone={() => setShowIntro(false)} />}
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="w-full max-w-4xl flex rounded-2xl overflow-hidden shadow-2xl border border-bdr">
 
@@ -177,5 +315,6 @@ export default function LoginPage({ onSwitchToRegister }) {
         </div>
       </div>
     </div>
+    </>
   )
 }

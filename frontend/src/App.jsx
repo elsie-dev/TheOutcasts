@@ -6,6 +6,7 @@ import MetricsPanel from './components/MetricsPanel'
 import ChaosControls from './components/ChaosControls'
 import IncidentFeed from './components/IncidentFeed'
 import AppPanel from './components/AppPanel'
+import AIAnalyst from './components/AIAnalyst'
 import { usePolling } from './hooks/usePolling'
 
 const MAX_HISTORY = 30
@@ -28,6 +29,7 @@ function Dashboard() {
   const [selectedAppId,   setSelectedAppId]   = useState(null)
   const [loading,         setLoading]         = useState(false)
   const [error,           setError]           = useState(null)
+  const [muted,           setMuted]           = useState(false)
   const autoOnboarded = useRef(false)
 
   const fetchMetrics = useCallback(async () => {
@@ -216,7 +218,14 @@ function Dashboard() {
             loading={loading}
             selectedApp={selectedApp}
           />
-          <IncidentFeed events={events} />
+          <div className="flex flex-col gap-4">
+            <AIAnalyst
+              activeScenarios={activeScenarios}
+              muted={muted}
+              onMuteToggle={() => setMuted(m => !m)}
+            />
+            <IncidentFeed events={events} />
+          </div>
         </div>
       </div>
     </div>
