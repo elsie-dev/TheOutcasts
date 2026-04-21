@@ -16,7 +16,9 @@ from . import prom, state
 from .models import ChaosConfig, ChaosEvent, RegisteredApp
 from .serializers import ChaosConfigSerializer, ChaosEventSerializer, RegisteredAppSerializer
 
-_VALID_SCENARIOS = ["MEMORY_LEAK", "NETWORK_LATENCY", "ERROR_RAIN"]
+_VALID_SCENARIOS = ["MEMORY_LEAK", "NETWORK_LATENCY", "ERROR_RAIN", "LATENCY", "SMS_BLOCK"]
+# Scenarios handled by an external microservice — proxied to the app's base_url
+_EXTERNAL_SCENARIOS = {"LATENCY", "SMS_BLOCK"}
 # ElevenLabs voice — "Adam" (pre-made, guaranteed on free tier)
 _ELEVENLABS_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
@@ -78,6 +80,23 @@ def inject_chaos(request):
             app = RegisteredApp.objects.get(pk=app_id)
         except RegisteredApp.DoesNotExist:
             return Response({"error": f"App with id {app_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # External scenarios are proxied to the app's own chaos API
+    if scenario in _EXTERNAL_SCENARIOS:
+        if not app or not app.base_url:
+            return Response(
+                {"error": f"{scenario} requires a target app with a base_url configured"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            r = httpx.post(
+                f"{app.base_url}/api/v1/chaos/inject",
+                json={"scenario": scenario},
+                timeout=10.0,
+            )
+            r.raise_for_status()
+        except Exception as exc:
+            return Response({"error": f"Failed to reach {app.name}: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
 
     config, _ = ChaosConfig.objects.get_or_create(scenario=scenario)
     if config.is_active:
@@ -158,7 +177,16 @@ def stop_chaos(request):
         cfg.deactivated_at = timezone.now()
         cfg.save()
 
-        if cfg.scenario == "MEMORY_LEAK":
+        if cfg.scenario in _EXTERNAL_SCENARIOS:
+            if app and app.base_url:
+                try:
+                    httpx.post(
+                        f"{app.base_url}/api/v1/chaos/stop",
+                        timeout=10.0,
+                    )
+                except Exception:
+                    pass  # best-effort — log the event regardless
+        elif cfg.scenario == "MEMORY_LEAK":
             state.stop_memory_leak()
         elif cfg.scenario == "NETWORK_LATENCY":
             state.stop_network_latency()
@@ -232,6 +260,8 @@ def analyze(request):
         "MEMORY_LEAK": "Memory Leak",
         "NETWORK_LATENCY": "Network Latency",
         "ERROR_RAIN": "Error Rain (HTTP 500s)",
+        "LATENCY": "Payment Latency (STK Push delays)",
+        "SMS_BLOCK": "SMS Block (notifications silently dropped)",
     }
     active_readable = [scenario_labels.get(s, s) for s in active]
 
@@ -241,14 +271,14 @@ System state right now:
 - Active chaos: {active_readable if active_readable else ['None']}
 - Memory: {mem_mb} MB | CPU: {cpu}% | Latency: {req_stats['avg_latency_ms']} ms | Errors: {req_stats['error_rate_pct']}%
 
-Write exactly 2 short punchy sentences. First sentence: what is failing and the user impact. Second sentence: what the engineer must do right now.
-No bullet points. No fluff. Maximum 40 words total."""
+Write exactly 3 short punchy sentences. First sentence: what is failing right now. Second sentence: how this is impacting the end user. Third sentence: what the engineer must do to fix it immediately.
+No bullet points. No fluff. Maximum 60 words total."""
 
     try:
         client = Groq(api_key=api_key)
         chat = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            max_tokens=80,
+            max_tokens=120,
             messages=[{"role": "user", "content": prompt}],
         )
         diagnosis = chat.choices[0].message.content.strip()

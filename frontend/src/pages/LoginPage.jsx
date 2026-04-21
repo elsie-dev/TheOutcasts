@@ -2,8 +2,8 @@ import { useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 const WELCOME_TEXT =
-  "Welcome to Elsie's live demonstration on chaos engineering. " +
-  "Today, you will witness how production systems break — memory leaks, network failures, error storms — " +
+  "Welcome to Elsie's live demo on chaos engineering. " +
+  "Today, you will witness how production systems break —  " +
   "and how engineers detect, diagnose, and recover in real time. Let the chaos begin."
 
 function WelcomeOverlay({ onDone }) {

@@ -5,6 +5,8 @@ SCENARIO_CHOICES = [
     ("MEMORY_LEAK", "Memory Leak"),
     ("NETWORK_LATENCY", "Network Latency"),
     ("ERROR_RAIN", "Error Rain"),
+    ("LATENCY", "Payment Latency"),
+    ("SMS_BLOCK", "SMS Block"),
 ]
 
 EVENT_TYPES = [

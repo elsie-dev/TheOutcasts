@@ -13,6 +13,13 @@ scrape_configs:
         labels:
           env: demo
 
+  - job_name: mpesa-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['mpesa-service:8001']
+        labels:
+          env: demo
+
   - job_name: prometheus
     static_configs:
       - targets: ['localhost:9090']
