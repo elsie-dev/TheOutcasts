@@ -8,4 +8,6 @@ urlpatterns = [
     path("apps/", views.apps_list, name="chaos-apps"),
     path("analyze/", views.analyze, name="chaos-analyze"),
     path("narrate/", views.narrate, name="chaos-narrate"),
+    path("mpesa-push/", views.mpesa_push, name="chaos-mpesa-push"),
+    path("mpesa-chaos-status/", views.mpesa_chaos_status, name="chaos-mpesa-status"),
 ]

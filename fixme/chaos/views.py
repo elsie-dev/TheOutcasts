@@ -325,6 +325,61 @@ def narrate(request):
         return Response({"error": str(e)}, status=500)
 
 
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def mpesa_push(request):
+    """
+    Proxy an STK push request to the registered M-Pesa microservice.
+    Body: { "app_id": <int>, "phone_number": "254...", "amount": 1 }
+    """
+    app_id = request.data.get("app_id")
+    phone = request.data.get("phone_number", "")
+    amount = request.data.get("amount", 1)
+
+    if not app_id:
+        return Response({"error": "app_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        app = RegisteredApp.objects.get(pk=app_id)
+    except RegisteredApp.DoesNotExist:
+        return Response({"error": "App not found"}, status=status.HTTP_404_NOT_FOUND)
+    if not app.base_url:
+        return Response({"error": "App has no base_url configured"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        r = httpx.post(
+            f"{app.base_url}/api/v1/payment/stk-push",
+            json={"phone_number": phone, "amount": amount},
+            timeout=15.0,
+        )
+        return Response(r.json(), status=r.status_code)
+    except Exception as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def mpesa_chaos_status(request):
+    """
+    Proxy the chaos status from the M-Pesa microservice.
+    Query param: ?app_id=<int>
+    """
+    app_id = request.query_params.get("app_id")
+    if not app_id:
+        return Response({"error": "app_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        app = RegisteredApp.objects.get(pk=app_id)
+    except RegisteredApp.DoesNotExist:
+        return Response({"error": "App not found"}, status=status.HTTP_404_NOT_FOUND)
+    if not app.base_url:
+        return Response({"active_scenario": None}, status=status.HTTP_200_OK)
+
+    try:
+        r = httpx.get(f"{app.base_url}/api/v1/chaos/status", timeout=5.0)
+        return Response(r.json(), status=r.status_code)
+    except Exception as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def chaos_status(request):

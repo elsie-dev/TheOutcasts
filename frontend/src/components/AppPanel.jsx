@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const SCENARIO_COLORS = {
   MEMORY_LEAK:     '#a78bfa',
@@ -36,6 +36,60 @@ export default function AppPanel({ apps, selectedAppId, onSelectApp, onRefreshAp
   const [formData, setFormData]   = useState({ name: '', description: '', base_url: '' })
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError]   = useState(null)
+  const [stkPhone, setStkPhone]     = useState('254740342824')
+  const [stkLoading, setStkLoading] = useState(false)
+  const [stkResult, setStkResult]   = useState(null)
+  const [stkElapsed, setStkElapsed] = useState(0)
+  const timerRef = useRef(null)
+
+  function startTimer() {
+    const start = Date.now()
+    setStkElapsed(0)
+    timerRef.current = setInterval(() => {
+      setStkElapsed(((Date.now() - start) / 1000).toFixed(1))
+    }, 100)
+  }
+
+  function stopTimer() {
+    clearInterval(timerRef.current)
+  }
+
+  async function handleStkPush(app) {
+    setStkLoading(true)
+    setStkResult(null)
+    startTimer()
+    const t0 = Date.now()
+    try {
+      const res = await fetch('/api/chaos/mpesa-push/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app_id: app.id, phone_number: stkPhone, amount: 1 }),
+      })
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
+      const data = await res.json()
+
+      // Check SMS status via Django proxy
+      let smsLine = null
+      try {
+        const cs = await fetch(`/api/chaos/mpesa-chaos-status/?app_id=${app.id}`)
+        const csData = await cs.json()
+        const smsBlocked = csData.active_scenario === 'SMS_BLOCK'
+        smsLine = smsBlocked
+          ? '⚠️ SMS silently dropped — customer never notified'
+          : '📱 SMS dispatched to customer'
+      } catch (_) {}
+
+      setStkResult(res.ok
+        ? { ok: true, msg: `Payment initiated in ${elapsed}s`, sms: smsLine }
+        : { ok: false, msg: data.detail ?? data.error ?? 'Request failed' }
+      )
+    } catch (err) {
+      setStkResult({ ok: false, msg: err.message })
+    } finally {
+      stopTimer()
+      setStkLoading(false)
+    }
+  }
 
   async function handleRegister(e) {
     e.preventDefault()
@@ -264,9 +318,48 @@ export default function AppPanel({ apps, selectedAppId, onSelectApp, onRefreshAp
                   Onboard &amp; Target
                 </button>
               ) : (
-                <p className="text-[10px] font-medium mt-1" style={{ color: '#22c55e' }}>
-                  Ready for chaos tests
-                </p>
+                <div className="mt-1 flex flex-col gap-1.5">
+                  <p className="text-[10px] font-medium" style={{ color: '#22c55e' }}>Ready for chaos tests</p>
+                  {app.base_url && (
+                    <div className="flex flex-col gap-1.5 pt-1.5" style={{ borderTop: '1px solid #1c2d4a' }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#3a5880' }}>Simulate STK Push</p>
+                      <input
+                        type="text"
+                        value={stkPhone}
+                        onChange={e => { setStkPhone(e.target.value); setStkResult(null) }}
+                        placeholder="254740342824"
+                        className="px-2 py-1 rounded-md text-[11px] text-tx outline-none"
+                        style={{ background: '#0d1525', border: '1px solid #1c2d4a', width: '100%' }}
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <button
+                        disabled={stkLoading}
+                        onClick={e => { e.stopPropagation(); handleStkPush(app) }}
+                        className="w-full py-1.5 rounded-md text-[11px] font-bold tracking-wide transition-all disabled:opacity-50"
+                        style={stkLoading
+                          ? { background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b' }
+                          : { background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e' }
+                        }
+                      >
+                        {stkLoading
+                          ? `⏳ Waiting for Daraja… ${stkElapsed}s`
+                          : '▶ Trigger Payment (KES 1)'}
+                      </button>
+                      {stkResult && (
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-[10px] leading-snug" style={{ color: stkResult.ok ? '#22c55e' : '#ef4444' }}>
+                            {stkResult.ok ? '✓' : '✗'} {stkResult.msg}
+                          </p>
+                          {stkResult.sms && (
+                            <p className="text-[10px] leading-snug" style={{ color: stkResult.sms.startsWith('⚠️') ? '#ef4444' : '#22c55e' }}>
+                              {stkResult.sms}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )
